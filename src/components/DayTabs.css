@@ -1,0 +1,47 @@
+.day-tabs {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.day-tab {
+  padding: 0.75rem 1.25rem;
+  border: 2px solid #e0e0e0;
+  background-color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s;
+  white-space: nowrap;
+  min-width: 70px;
+  text-align: center;
+}
+
+.day-tab:hover {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.day-tab.active {
+  background-color: #4CAF50;
+  border-color: #4CAF50;
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .day-tabs {
+    gap: 0.25rem;
+  }
+
+  .day-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    min-width: 60px;
+  }
+}
+
