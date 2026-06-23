@@ -1,3 +1,10 @@
+/**
+ * Multi-step onboarding form state.
+ *
+ * Holds answers across 12 steps (name, goals, body stats, diet, budget,
+ * location). OnboardingProvider wraps the onboarding screen only; data is
+ * persisted to Supabase on the final step via upsertProfile.
+ */
 import {
   createContext,
   useCallback,
@@ -37,6 +44,11 @@ const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
 export const ONBOARDING_TOTAL_STEPS = 12;
 
+/**
+ * Manages step index and partial onboarding answers.
+ *
+ * State: data (OnboardingData), step (1–12). Exposes update, next, back.
+ */
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<OnboardingData>(INITIAL);
   const [step, setStep] = useState(1);
@@ -71,6 +83,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Hook to read/write onboarding form state. Must be inside OnboardingProvider.
+ */
 export function useOnboarding(): OnboardingContextValue {
   const ctx = useContext(OnboardingContext);
   if (!ctx) throw new Error('useOnboarding must be used within OnboardingProvider');

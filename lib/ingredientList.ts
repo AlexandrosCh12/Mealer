@@ -1,5 +1,13 @@
+/**
+ * Weekly shopping list builder and Greek supermarket price estimates.
+ *
+ * Deduplicates ingredients across the week's meals, assigns package-level
+ * euro prices, and optionally scales costs to fit the user's budget or
+ * a store's price tier multiplier. Powers the Shopping tab checklist.
+ */
 import type { WeeklyPlan } from './weeklyMealPlan';
 
+/** One line item on the shopping checklist with cost and checked state. */
 export interface IngredientItem {
   id: string;
   name: string;
@@ -105,6 +113,18 @@ const INGREDIENT_COSTS: Record<string, number> = {
   apple: 2.0, // bag of 4-6
 };
 
+/**
+ * Aggregates unique ingredients from a weekly plan into a priced checklist.
+ *
+ * Costs reflect typical Greek supermarket package prices. If the raw total
+ * exceeds budgetEur, every line is scaled proportionally so the list fits
+ * the user's stated weekly budget.
+ *
+ * @param weeklyPlan - All meals across 7 days.
+ * @param budgetEur - User's weekly grocery budget (caps total estimate).
+ * @param priceMultiplier - Store tier adjustment (1.0 = discount, 1.45 = premium).
+ * @returns Sorted IngredientItem array, unchecked by default.
+ */
 export function buildWeeklyIngredientList(
   weeklyPlan: WeeklyPlan,
   budgetEur: number,
@@ -135,7 +155,7 @@ export function buildWeeklyIngredientList(
     });
   }
 
-  // Scale costs to fit budget if over
+  // Scale costs to fit budget if over — preserves relative item prices.
   if (totalCost > budgetEur) {
     const scale = budgetEur / totalCost;
     return items
@@ -149,6 +169,12 @@ export function buildWeeklyIngredientList(
   return items.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Sums estimated costs for all checklist items.
+ *
+ * @param items - Shopping list rows with estimatedCost set.
+ * @returns Total euros, rounded to two decimal places.
+ */
 export function getTotalCost(items: IngredientItem[]): number {
   return (
     Math.round(items.reduce((sum, item) => sum + item.estimatedCost, 0) * 100) /

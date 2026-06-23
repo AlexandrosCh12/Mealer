@@ -1,3 +1,10 @@
+/**
+ * Nutrition tab — macro rings and logged meals for today.
+ *
+ * State: todayMeals and eatenIds from AsyncStorage (synced when Home marks eaten).
+ * Macro targets derive from calorie target via 30/45/25 protein/carbs/fat split.
+ * MacroRing sub-component staggers ring animations with delay prop.
+ */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
@@ -39,6 +46,7 @@ interface MacroRingProps {
   delay: number;
 }
 
+/** Animated SVG ring showing progress toward one macro target. */
 function MacroRing({
   color,
   progress,
@@ -112,6 +120,7 @@ function formatTodayDate(): string {
   });
 }
 
+/** Nutrition summary screen with macro rings and eaten-meal log. */
 export default function NutritionScreen() {
   const { profile } = useAuth();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -190,6 +199,7 @@ export default function NutritionScreen() {
       { calories: 0, protein: 0, carbs: 0, fat: 0 }
     );
     const calTarget = calculateDailyCalorieTarget(profile);
+    // Standard macro split: 30% protein, 45% carbs, 25% fat (4/4/9 kcal per g).
     const proteinTarget = Math.round((calTarget * 0.3) / 4);
     const carbsTarget = Math.round((calTarget * 0.45) / 4);
     const fatTarget = Math.round((calTarget * 0.25) / 9);

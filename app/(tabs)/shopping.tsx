@@ -1,3 +1,10 @@
+/**
+ * Shopping tab — store rankings, map, and weekly ingredient checklist.
+ *
+ * State: sort preference, selected store (drives price multiplier), ingredient
+ * checkboxes persisted to AsyncStorage, map modal visibility.
+ * Ingredient costs rebuild when store tier changes.
+ */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -189,6 +196,7 @@ function StoreCard({
   );
 }
 
+/** Shopping screen with ranked stores and interactive grocery list. */
 export default function ShoppingScreen() {
   const { profile } = useAuth();
   const [sortPreference, setSortPreference] =

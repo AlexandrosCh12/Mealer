@@ -1,6 +1,18 @@
+/**
+ * Profile persistence layer — reads and writes user profiles in Supabase.
+ *
+ * Bridges onboarding data to the `profiles` table. AuthContext calls
+ * fetchProfile after login; onboarding calls upsertProfile on completion.
+ */
 import { supabase } from '@/lib/supabase';
 import type { OnboardingData, Profile } from '@/types';
 
+/**
+ * Loads a user's profile from Supabase by auth user id.
+ *
+ * @param userId - Supabase auth user UUID.
+ * @returns Profile row or null if missing or on error.
+ */
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
@@ -18,6 +30,16 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
   return { ...data, allergies: data.allergies ?? [] } as Profile;
 }
 
+/**
+ * Saves completed onboarding answers to the profiles table.
+ *
+ * Validates that all required fields are present before writing.
+ * Normalizes allergies: empty or "none" becomes `['none']`.
+ *
+ * @param userId - Supabase auth user UUID.
+ * @param onboarding - Full onboarding form state from OnboardingContext.
+ * @returns `{ error: null }` on success, or an error message string.
+ */
 export async function upsertProfile(
   userId: string,
   onboarding: OnboardingData

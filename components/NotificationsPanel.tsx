@@ -1,3 +1,10 @@
+/**
+ * Dropdown notifications panel on the Home screen.
+ *
+ * Slides down from the top-right with spring animation. Uses mock data today;
+ * parent manages read state via onMarkRead. Tapping a notification routes
+ * by type (e.g. streak → profile).
+ */
 import React from 'react';
 import {
   View,
@@ -60,10 +67,12 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
   },
 ];
 
+/** Count of unread items in the static mock notification list. */
 export function getUnreadNotificationCount(): number {
   return MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
 }
 
+/** Slide-down panel listing notifications with type-colored icons. */
 export default function NotificationsPanel({
   visible,
   onClose,

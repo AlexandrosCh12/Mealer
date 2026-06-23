@@ -1,3 +1,10 @@
+/**
+ * Map modal for supermarket store locations (Leaflet in WebView).
+ *
+ * Slides up from bottom via Animated.spring. Embeds dark-themed Leaflet map
+ * with markers from supermarketLocations. Shows expansion message for cities
+ * without coordinate data.
+ */
 import React from 'react';
 import {
   Modal, View, Text, Pressable, StyleSheet,
@@ -16,6 +23,7 @@ interface Props {
 
 const { height } = Dimensions.get('window');
 
+/** Supermarket locations map bottom sheet with Leaflet WebView. */
 export default function SupermarketMapModal({
   visible, onClose, supermarketName, city, country,
 }: Props) {
@@ -173,8 +181,8 @@ if (locations.length === 0) {
               style={styles.webview}
               javaScriptEnabled
               domStorageEnabled
-              originWhitelist={['*']}
-              mixedContentMode="always"
+              originWhitelist={['about:blank', 'https://*']}
+              mixedContentMode="never"
             />
           )}
         </View>

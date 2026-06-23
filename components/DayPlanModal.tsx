@@ -1,3 +1,9 @@
+/**
+ * Modal listing all meals planned for today.
+ *
+ * Bottom sheet with spring slide-up. Shows eaten state (checkmark, strikethrough).
+ * Tapping a meal calls onMealPress so parent can open MealDetailModal.
+ */
 import React from 'react';
 import {
   Modal,
@@ -22,6 +28,7 @@ interface Props {
 
 const { height } = Dimensions.get('window');
 
+/** Full-day meal list modal opened from Home "View full day's plan". */
 export default function DayPlanModal({
   visible,
   onClose,

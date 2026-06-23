@@ -1,3 +1,8 @@
+/**
+ * Rotating health and motivation quotes for the Home screen.
+ *
+ * getDailyQuote returns a stable quote per calendar day (same quote all day).
+ */
 export const MOTIVATION_QUOTES = [
   {
     quote: "Take care of your body. It's the only place you have to live.",
@@ -43,6 +48,11 @@ export const MOTIVATION_QUOTES = [
   { quote: "Fuel your body. It's the only one you get.", author: 'Unknown' },
 ];
 
+/**
+ * Picks today's quote using day-of-year modulo list length.
+ *
+ * @returns Quote text and author for display on Home.
+ */
 export function getDailyQuote(): { quote: string; author: string } {
   const dayOfYear = Math.floor(
     (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) /

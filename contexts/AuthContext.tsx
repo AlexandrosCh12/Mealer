@@ -1,3 +1,10 @@
+/**
+ * Global authentication and profile state.
+ *
+ * Wraps Supabase session lifecycle and derives routing status:
+ * loading → unauthenticated → needs_onboarding → authenticated.
+ * Root _layout reads status to redirect between auth, onboarding, and tabs.
+ */
 import { Session } from '@supabase/supabase-js';
 import {
   createContext,
@@ -23,6 +30,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** True when every field required for meal generation is present on the profile. */
 function isProfileComplete(profile: Profile | null): boolean {
   if (!profile) return false;
   return (
@@ -39,6 +47,12 @@ function isProfileComplete(profile: Profile | null): boolean {
   );
 }
 
+/**
+ * Provides session, profile, and derived auth status to the app tree.
+ *
+ * State: session from Supabase, profile from fetchProfile, loading until
+ * initial getSession resolves. Subscribes to onAuthStateChange for sign-in/out.
+ */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -54,10 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user.id]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to get session:', error);
+        setSession(null);
+        setLoading(false);
+      });
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession);
@@ -89,6 +110,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/**
+ * Hook to read auth context. Must be used inside AuthProvider.
+ *
+ * @returns session, profile, status, and refreshProfile callback.
+ */
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

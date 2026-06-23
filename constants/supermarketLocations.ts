@@ -1,3 +1,9 @@
+/**
+ * Static supermarket store coordinates for map modals.
+ *
+ * Thessaloniki is the primary dataset; Athens has a smaller fallback set.
+ * getStoreLocations picks the dataset based on the user's city string.
+ */
 export interface StoreLocation {
   name: string;
   address: string;
@@ -84,6 +90,13 @@ export const SUPERMARKET_LOCATIONS_ATHENS: Record<string, StoreLocation[]> = {
   ],
 };
 
+/**
+ * Resolves brick-and-mortar locations for a chain in the user's city.
+ *
+ * @param storeName - Chain name key (e.g. "Lidl", "Sklavenitis").
+ * @param city - User's city; Athens triggers the Athens dataset.
+ * @returns StoreLocation array, or empty if chain unknown in that dataset.
+ */
 export function getStoreLocations(
   storeName: string,
   city: string

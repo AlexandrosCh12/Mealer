@@ -1,9 +1,16 @@
+/**
+ * Auth welcome / landing screen.
+ *
+ * First screen for unauthenticated users. Offers paths to signup or login.
+ * No local state — purely navigational.
+ */
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 
+/** Welcome landing with Get Started and Login actions. */
 export default function WelcomeScreen() {
   return (
     <SafeAreaView style={styles.container}>

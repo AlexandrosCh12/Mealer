@@ -1,3 +1,10 @@
+/**
+ * 12-step onboarding wizard — collects profile data for meal personalization.
+ *
+ * State: step navigation via OnboardingContext, saving/error flags locally.
+ * Step transitions use Animated parallel fade+slide. Finishing calls upsertProfile
+ * then refreshProfile and navigates to main tabs.
+ */
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -68,6 +75,7 @@ export default function OnboardingScreen() {
 
   const progress = step / totalSteps;
 
+  /** Per-step validation — Continue stays disabled until the step is complete. */
   function canContinue(): boolean {
     switch (step) {
       case 1:
@@ -77,11 +85,11 @@ export default function OnboardingScreen() {
       case 3:
         return data.gender !== null && data.gender.length > 0;
       case 4:
-        return data.age !== null && data.age > 0;
+        return data.age !== null && data.age >= 13 && data.age <= 120;
       case 5:
-        return data.weight_kg !== null && data.weight_kg > 0;
+        return data.weight_kg !== null && data.weight_kg >= 20 && data.weight_kg <= 400;
       case 6:
-        return data.height_cm !== null && data.height_cm > 0;
+        return data.height_cm !== null && data.height_cm >= 100 && data.height_cm <= 250;
       case 7:
         return data.activity_level !== null;
       case 8:
@@ -89,7 +97,7 @@ export default function OnboardingScreen() {
       case 9:
         return data.allergies.length > 0;
       case 10:
-        return data.budget_weekly_eur !== null && data.budget_weekly_eur > 0;
+        return data.budget_weekly_eur !== null && data.budget_weekly_eur >= 5 && data.budget_weekly_eur <= 1000;
       case 11:
         return data.country !== null && data.country.length > 0;
       case 12:
@@ -113,6 +121,7 @@ export default function OnboardingScreen() {
     router.replace('/(tabs)');
   }
 
+  /** Fade out, change step, then slide+fade in — gives directional step feel. */
   function animateStepChange(changeStep: () => void) {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -156,6 +165,7 @@ export default function OnboardingScreen() {
     animateStepChange(() => back());
   }
 
+  /** "None" is exclusive; other allergies can be multi-selected. */
   function toggleAllergy(allergy: Allergy) {
     if (allergy === 'none') {
       update({ allergies: ['none'] });
@@ -238,7 +248,12 @@ export default function OnboardingScreen() {
                 value={data.age}
                 onChange={(n) => update({ age: n })}
                 placeholder="e.g. 28"
+                min={13}
+                max={120}
               />
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6 }}>
+                Must be between 13 and 120
+              </Text>
             </StepShell>
           )}
 
@@ -249,7 +264,12 @@ export default function OnboardingScreen() {
                 onChange={(n) => update({ weight_kg: n })}
                 placeholder="e.g. 75"
                 decimal
+                min={20}
+                max={400}
               />
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6 }}>
+                Must be between 20 and 400
+              </Text>
             </StepShell>
           )}
 
@@ -259,7 +279,12 @@ export default function OnboardingScreen() {
                 value={data.height_cm}
                 onChange={(n) => update({ height_cm: n })}
                 placeholder="e.g. 175"
+                min={100}
+                max={250}
               />
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6 }}>
+                Must be between 100 and 250
+              </Text>
             </StepShell>
           )}
 
@@ -309,7 +334,12 @@ export default function OnboardingScreen() {
                 onChange={(n) => update({ budget_weekly_eur: n })}
                 placeholder="e.g. 60"
                 decimal
+                min={5}
+                max={1000}
               />
+              <Text style={{ color: colors.textMuted, fontSize: 11, marginTop: 6 }}>
+                Must be between 5 and 1000
+              </Text>
             </StepShell>
           )}
 
@@ -375,6 +405,7 @@ export default function OnboardingScreen() {
   );
 }
 
+/** Layout wrapper for each onboarding step's title and inputs. */
 function StepShell({
   title,
   subtitle,
@@ -393,6 +424,7 @@ function StepShell({
   );
 }
 
+/** Selectable pill button for single- or multi-choice onboarding steps. */
 function OptionButton({
   label,
   selected,
@@ -414,16 +446,21 @@ function OptionButton({
   );
 }
 
+/** Controlled numeric TextInput with optional decimal keyboard. */
 function NumericInput({
   value,
   onChange,
   placeholder,
   decimal = false,
+  min,
+  max,
 }: {
   value: number | null;
   onChange: (n: number | null) => void;
   placeholder: string;
   decimal?: boolean;
+  min?: number;
+  max?: number;
 }) {
   return (
     <TextInput
@@ -438,7 +475,8 @@ function NumericInput({
           return;
         }
         const parsed = decimal ? parseFloat(t) : parseInt(t, 10);
-        if (!Number.isNaN(parsed)) onChange(parsed);
+        if (Number.isNaN(parsed)) return;
+        onChange(parsed);
       }}
     />
   );

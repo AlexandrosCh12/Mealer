@@ -1,3 +1,10 @@
+/**
+ * Home tab — today's meal plan, calorie ring, and quick actions.
+ *
+ * State: weeklyPlan/todayPlan (Supabase + AsyncStorage), eatenIds per day,
+ * modals for meal detail / full day / notifications, swap loading per slot.
+ * Calorie ring animates strokeDasharray as meals are marked eaten.
+ */
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -51,6 +58,7 @@ function formatSlot(slot: MealSlot): string {
   return slot.charAt(0).toUpperCase() + slot.slice(1);
 }
 
+/** Home dashboard — greeting, intake ring, next meal, still-to-go list, daily quote. */
 export default function HomeScreen() {
   const { profile, session } = useAuth();
   const router = useRouter();
@@ -122,13 +130,14 @@ export default function HomeScreen() {
   );
 
   const loadPlan = useCallback(async () => {
-    if (!profile) return;
-    const plan = await loadOrGenerateWeeklyPlan(profile.id, profile);
+    if (!profile || !session?.user.id) return;
+    if (!profile.diet_type || profile.age == null) return; // profile incomplete, wait for onboarding
+    const plan = await loadOrGenerateWeeklyPlan(session.user.id, profile);
     const today = getTodayPlan(plan);
     setWeeklyPlan(plan);
     setTodayPlan(today);
     await persistWeeklyPlan(plan);
-  }, [profile, persistWeeklyPlan]);
+  }, [profile, session, persistWeeklyPlan]);
 
   useEffect(() => {
     void loadPlan();
@@ -222,6 +231,7 @@ export default function HomeScreen() {
       ? (eatenCalories / targetCalories) * RING_CIRCUMFERENCE
       : 0;
 
+  // Animate calorie ring fill when eaten calories change.
   useEffect(() => {
     Animated.timing(ringAnim, {
       toValue: ringTarget,

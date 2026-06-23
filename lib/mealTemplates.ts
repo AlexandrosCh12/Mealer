@@ -1,5 +1,13 @@
+/**
+ * Static meal template catalog — the source of truth for generated plans.
+ *
+ * Each Meal includes macros, diet compatibility, allergy exclusions, and
+ * optional cooking steps. mealGenerator filters this list by profile, then
+ * picks meals per slot. Templates are hand-authored (not API-generated).
+ */
 import type { Allergy, DietType, Meal, MealSlot } from '@/types';
 
+/** Full library of breakfast, lunch, dinner, and snack templates. */
 export const MEAL_TEMPLATES: Meal[] = [
   {
     id: 'b1',
@@ -1718,6 +1726,16 @@ export const MEAL_TEMPLATES: Meal[] = [
   },
 ];
 
+/**
+ * Returns templates compatible with the user's diet and safe for their allergies.
+ *
+ * A meal is excluded if the user has an active allergy listed in
+ * meal.excludesAllergies. "none" in allergies means no restrictions.
+ *
+ * @param dietType - User's chosen diet (omnivore, vegan, etc.).
+ * @param allergies - Selected allergy tags from onboarding.
+ * @returns Filtered subset of MEAL_TEMPLATES.
+ */
 export function filterTemplates(
   dietType: DietType,
   allergies: string[]
@@ -1733,6 +1751,14 @@ export function filterTemplates(
   });
 }
 
+/**
+ * Randomly selects one meal for a slot from the filtered pool.
+ *
+ * @param pool - Usually output of filterTemplates.
+ * @param slot - breakfast | lunch | dinner | snack.
+ * @param excludeIds - Meal ids to skip (already on today's plan).
+ * @returns Random matching meal or null if pool is empty.
+ */
 export function pickMealForSlot(
   pool: Meal[],
   slot: MealSlot,

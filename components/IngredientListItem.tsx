@@ -1,3 +1,9 @@
+/**
+ * Single row in the Shopping tab ingredient checklist.
+ *
+ * Toggle plays a brief scale-down/spring animation on press. Checked rows
+ * show strikethrough name and dimmed cost.
+ */
 import React from 'react';
 import { View, Text, Pressable, StyleSheet, Animated } from 'react-native';
 import type { IngredientItem } from '@/lib/ingredientList';
@@ -7,6 +13,7 @@ interface Props {
   onToggle: (id: string) => void;
 }
 
+/** Checklist row with animated checkbox toggle for one ingredient. */
 export default function IngredientListItem({ item, onToggle }: Props) {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
 

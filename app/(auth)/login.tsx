@@ -1,3 +1,9 @@
+/**
+ * Login screen — email/password sign-in via Supabase.
+ *
+ * State: email, password, error message, loading flag.
+ * On success, router.replace('/') lets RootNavigator send user to tabs or onboarding.
+ */
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,6 +21,11 @@ import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Login form screen. */
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
@@ -24,6 +35,10 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     setError(null);
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
     setLoading(true);
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: email.trim(),

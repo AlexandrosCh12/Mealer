@@ -1,3 +1,9 @@
+/**
+ * Signup screen — creates auth user and initial profile row.
+ *
+ * State: firstName, email, password, error, loading.
+ * Also upserts display_name into profiles so onboarding can skip re-entering name.
+ */
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,6 +21,11 @@ import { Button } from '@/components/ui/Button';
 import { colors } from '@/constants/colors';
 import { supabase } from '@/lib/supabase';
 
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/** Signup form screen. */
 export default function SignupScreen() {
   const router = useRouter();
   const [firstName, setFirstName] = useState('');
@@ -25,8 +36,12 @@ export default function SignupScreen() {
 
   async function handleSignup() {
     setError(null);
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!isValidEmail(email.trim())) {
+      setError('Please enter a valid email address');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
       return;
     }
     setLoading(true);
@@ -40,10 +55,16 @@ export default function SignupScreen() {
       return;
     }
     if (data.user) {
-      await supabase.from('profiles').upsert({
+      const { error: profileError } = await supabase.from('profiles').upsert({
         id: data.user.id,
         display_name: firstName.trim(),
       });
+      if (profileError) {
+        console.error('Failed to create profile:', profileError.message);
+        setLoading(false);
+        setError('Account created but profile setup failed. Please try logging in.');
+        return;
+      }
     }
     setLoading(false);
     router.replace('/');
@@ -70,6 +91,7 @@ export default function SignupScreen() {
             placeholderTextColor={colors.textMuted}
             value={firstName}
             onChangeText={setFirstName}
+            maxLength={30}
           />
           <TextInput
             style={styles.input}
@@ -82,7 +104,7 @@ export default function SignupScreen() {
           />
           <TextInput
             style={styles.input}
-            placeholder="Password (min 6 characters)"
+            placeholder="Password (at least 8 characters)"
             placeholderTextColor={colors.textMuted}
             secureTextEntry
             value={password}

@@ -1,3 +1,10 @@
+/**
+ * Weekly meal plan persistence — load, generate, and save plans in Supabase.
+ *
+ * One plan per user per calendar week (keyed by Monday `week_start`).
+ * Falls back to generateWeeklyPlan when no valid cached plan exists.
+ * Home screen also mirrors plans to AsyncStorage for offline tab access.
+ */
 /*
   Run in Supabase SQL Editor:
 
@@ -12,6 +19,12 @@ import { supabase } from './supabase';
 import { generateWeeklyPlan, getWeekStart, type WeeklyPlan } from './weeklyMealPlan';
 import type { Profile } from '@/types';
 
+/**
+ * Upserts a weekly plan after local edits (e.g. meal swap on Home).
+ *
+ * @param userId - Owner's Supabase auth id.
+ * @param weeklyPlan - Full week structure including all day plans.
+ */
 export async function saveWeeklyPlan(
   userId: string,
   weeklyPlan: WeeklyPlan
@@ -33,6 +46,15 @@ export async function saveWeeklyPlan(
   }
 }
 
+/**
+ * Returns the current week's plan from Supabase, or generates a new one.
+ *
+ * Parses stored JSON safely; corrupt or legacy rows trigger regeneration.
+ *
+ * @param userId - Owner's Supabase auth id.
+ * @param profile - Used to generate a fresh plan when none is stored.
+ * @returns WeeklyPlan for the week containing today.
+ */
 export async function loadOrGenerateWeeklyPlan(
   userId: string,
   profile: Profile

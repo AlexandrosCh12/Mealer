@@ -1,3 +1,10 @@
+/**
+ * Root app layout — fonts, auth provider, and navigation guard.
+ *
+ * Loads DM Sans, wraps the tree in AuthProvider, and redirects users based
+ * on auth status (welcome / onboarding / main tabs). Shows a splash spinner
+ * while the initial session is loading.
+ */
 import {
   DMSans_400Regular,
   DMSans_500Medium,
@@ -14,6 +21,10 @@ import { colors } from '@/constants/colors';
 
 SplashScreen.preventAutoHideAsync();
 
+/**
+ * Inner navigator that reacts to auth status and current route segments.
+ * Replaces routes when user lands on the wrong stack for their status.
+ */
 function RootNavigator() {
   const { status } = useAuth();
   const segments = useSegments();
@@ -52,6 +63,9 @@ function RootNavigator() {
   );
 }
 
+/**
+ * Root layout component — loads fonts and mounts AuthProvider + navigator.
+ */
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     DMSans_400Regular,

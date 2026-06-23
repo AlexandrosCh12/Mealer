@@ -1,3 +1,9 @@
+/**
+ * Profile tab — view/edit display name, account actions, logout.
+ *
+ * State: inline name edit, logout/reset/delete loading. Reset clears meal
+ * plans and onboarding fields; delete removes all user data via RPC.
+ */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +32,7 @@ const PROFILE_ROWS: {
   { label: 'Location', getValue: (p) => `${p.city}, ${p.country}` },
 ];
 
+/** Profile screen showing onboarding answers and account controls. */
 export default function ProfileScreen() {
   const { session, profile, refreshProfile } = useAuth();
   const router = useRouter();
@@ -70,6 +77,14 @@ export default function ProfileScreen() {
   async function handleLogout() {
     setLoggingOut(true);
     await supabase.auth.signOut();
+    await AsyncStorage.removeItem('current_weekly_plan');
+    const allKeys = await AsyncStorage.getAllKeys();
+    const appKeys = allKeys.filter(
+      (k) => k.startsWith('eaten_ids_') || k.startsWith('ingredient_checked_state')
+    );
+    if (appKeys.length > 0) {
+      await AsyncStorage.multiRemove(appKeys);
+    }
     setLoggingOut(false);
     router.replace('/(auth)/welcome');
   }
@@ -130,12 +145,39 @@ export default function ProfileScreen() {
             try {
               const userId = session?.user.id;
               if (!userId) return;
-              await supabase.from('meal_plans').delete().eq('user_id', userId);
-              await supabase.from('profiles').delete().eq('id', userId);
-              await supabase.rpc('delete_own_account');
+
+              const { error: mealError } = await supabase
+                .from('meal_plans')
+                .delete()
+                .eq('user_id', userId);
+              if (mealError) {
+                console.error('Failed to delete meal plans:', mealError.message);
+              }
+
+              const { error: profileError } = await supabase
+                .from('profiles')
+                .delete()
+                .eq('id', userId);
+              if (profileError) {
+                Alert.alert('Error', 'Could not delete profile. Please try again.');
+                return;
+              }
+
+              const { error: rpcError } = await supabase.rpc('delete_own_account');
+              if (rpcError) {
+                console.error('Failed to delete auth user:', rpcError.message);
+                Alert.alert(
+                  'Error',
+                  'Account data was removed but final cleanup failed. Contact support.'
+                );
+                return;
+              }
+
+              await supabase.auth.signOut();
               await AsyncStorage.clear();
               router.replace('/(auth)/welcome');
             } catch (e) {
+              console.error('Delete account error:', e);
               Alert.alert('Error', 'Something went wrong. Try again.');
             }
           },
@@ -182,6 +224,7 @@ export default function ProfileScreen() {
                   style={styles.nameInput}
                   value={nameValue}
                   onChangeText={setNameValue}
+                  maxLength={30}
                   autoFocus
                 />
                 <Pressable

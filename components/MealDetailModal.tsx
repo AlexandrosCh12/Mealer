@@ -1,3 +1,9 @@
+/**
+ * Bottom sheet modal showing full meal details (macros, ingredients, steps).
+ *
+ * Slides up from the bottom using Animated.spring on open and timing on close.
+ * Renders nothing when meal is null. Slot pill color comes from colors.slots.
+ */
 import React from 'react';
 import {
   Modal,
@@ -20,6 +26,7 @@ interface Props {
 
 const { height } = Dimensions.get('window');
 
+/** Meal detail bottom sheet — ingredients, macros, optional cooking steps. */
 export default function MealDetailModal({ meal, visible, onClose }: Props) {
   const slideAnim = React.useRef(new Animated.Value(height)).current;
 

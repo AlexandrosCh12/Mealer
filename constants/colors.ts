@@ -1,3 +1,9 @@
+/**
+ * App-wide color tokens and meal-slot accent palettes.
+ *
+ * Dark purple theme used across screens, tabs, macros, and slot pills.
+ * Import `colors` instead of hardcoding hex values in components.
+ */
 export const colors = {
   background: '#09090f',
   backgroundGradient: ['#110d1f', '#09090f', '#09090f'] as const,

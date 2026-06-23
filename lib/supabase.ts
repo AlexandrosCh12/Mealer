@@ -1,3 +1,9 @@
+/**
+ * Supabase client singleton for auth and database access.
+ *
+ * Configured for React Native: sessions persist in AsyncStorage and
+ * refresh automatically. All screens and lib modules import this client.
+ */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 
