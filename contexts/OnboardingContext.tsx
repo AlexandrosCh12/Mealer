@@ -9,6 +9,7 @@ import {
 import type { OnboardingData } from '@/types';
 
 const INITIAL: OnboardingData = {
+  display_name: '',
   goal: null,
   gender: null,
   age: null,
@@ -34,7 +35,7 @@ interface OnboardingContextValue {
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
 
-export const ONBOARDING_TOTAL_STEPS = 11;
+export const ONBOARDING_TOTAL_STEPS = 12;
 
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<OnboardingData>(INITIAL);

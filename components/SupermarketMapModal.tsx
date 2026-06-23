@@ -1,15 +1,10 @@
 import React from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  ActivityIndicator,
+  Modal, View, Text, Pressable, StyleSheet,
+  Animated, Dimensions,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
+import { getStoreLocations } from '@/constants/supermarketLocations';
 
 interface Props {
   visible: boolean;
@@ -22,18 +17,12 @@ interface Props {
 const { height } = Dimensions.get('window');
 
 export default function SupermarketMapModal({
-  visible,
-  onClose,
-  supermarketName,
-  city,
-  country,
+  visible, onClose, supermarketName, city, country,
 }: Props) {
   const slideAnim = React.useRef(new Animated.Value(height)).current;
-  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     if (visible) {
-      setLoading(true);
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -47,195 +36,116 @@ export default function SupermarketMapModal({
         useNativeDriver: true,
       }).start();
     }
-  }, [visible, slideAnim]);
+  }, [visible]);
 
-  const mapHtml = `
+  const locations = React.useMemo(
+    () => getStoreLocations(supermarketName, city),
+    [supermarketName, city]
+  );
+
+  const mapHtml = React.useMemo(() => {
+    return `
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #09090f; font-family: -apple-system, sans-serif; }
-    #map { width: 100vw; height: 100vh; }
-    .leaflet-tile-pane { filter: brightness(0.85) saturate(0.9); }
-    .custom-marker {
-      background: #8b5cf6;
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-      width: 14px;
-      height: 14px;
-    }
-    .leaflet-popup-content-wrapper {
-      background: #110d1f;
-      color: #ffffff;
-      border: 1px solid rgba(139,92,246,0.3);
-      border-radius: 12px;
-    }
-    .leaflet-popup-tip { background: #110d1f; }
-    .leaflet-popup-content { 
-      color: #ffffff; 
-      font-size: 13px;
-      margin: 10px 14px;
-    }
-    .store-name { 
-      font-weight: 600; 
-      color: #a78bfa;
-      margin-bottom: 2px;
-    }
-    .store-addr { 
-      color: rgba(255,255,255,0.5); 
-      font-size: 11px; 
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #09090f; }
+#map { width: 100vw; height: 100vh; }
+#counter {
+  position: fixed; top: 12px; right: 12px;
+  background: rgba(139,92,246,0.95); color: #fff;
+  padding: 7px 14px; border-radius: 20px; font-size: 12px;
+  font-family: -apple-system, sans-serif; z-index: 1000;
+  font-weight: 600;
+}
+.leaflet-popup-content-wrapper {
+  background: #1a0f2e; color: #fff;
+  border: 1px solid rgba(139,92,246,0.4);
+  border-radius: 12px;
+}
+.leaflet-popup-tip { background: #1a0f2e; }
+.leaflet-popup-content { color: #fff; font-size: 13px; margin: 10px 14px; }
+.popup-name { font-weight: 600; color: #a78bfa; margin-bottom: 3px; }
+.popup-addr { color: rgba(255,255,255,0.5); font-size: 11px; }
+.popup-area { color: rgba(139,92,246,0.7); font-size: 10px; margin-top: 2px; }
+</style>
 </head>
 <body>
-  <div id="map"></div>
-  <script>
-    const map = L.map('map', {
-      zoomControl: true,
-      attributionControl: false,
-    });
+<div id="counter">${locations.length} location${locations.length !== 1 ? 's' : ''}</div>
+<div id="map"></div>
+<script>
+var locations = ${JSON.stringify(locations)};
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-    }).addTo(map);
+var map = L.map('map', { zoomControl: true, attributionControl: false });
 
-    const violetIcon = L.divIcon({
-      className: '',
-      html: '<div style="width:16px;height:16px;background:#8b5cf6;border:2.5px solid #fff;border-radius:50%;box-shadow:0 0 8px rgba(139,92,246,0.6)"></div>',
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-      popupAnchor: [0, -12],
-    });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  maxZoom: 19,
+}).addTo(map);
 
-    fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + 
-      encodeURIComponent('${city}, ${country}') + '&limit=1')
-      .then(r => r.json())
-      .then(cityData => {
-        if (!cityData.length) return;
-        
-        const cityLat = parseFloat(cityData[0].lat);
-        const cityLon = parseFloat(cityData[0].lon);
-        
-        map.setView([cityLat, cityLon], 13);
+var violetIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:18px;height:18px;background:#8b5cf6;border:3px solid #fff;border-radius:50%;box-shadow:0 0 10px rgba(139,92,246,0.8)"></div>',
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+  popupAnchor: [0, -14],
+});
 
-        function runOverpass(query) {
-          return fetch('https://overpass-api.de/api/interpreter', {
-            method: 'POST',
-            body: 'data=' + encodeURIComponent(query),
-          }).then(r => r.json());
-        }
-
-        const nameQuery = '[out:json][timeout:25];(' +
-          'node["name"~"${supermarketName}",i]["shop"="supermarket"]' +
-          '(around:5000,' + cityLat + ',' + cityLon + ');' +
-          'way["name"~"${supermarketName}",i]["shop"="supermarket"]' +
-          '(around:5000,' + cityLat + ',' + cityLon + ');' +
-        ');out body center;';
-
-        const brandQuery = '[out:json][timeout:25];(' +
-          'node["brand"~"${supermarketName}",i]' +
-          '(around:5000,' + cityLat + ',' + cityLon + ');' +
-          'way["brand"~"${supermarketName}",i]' +
-          '(around:5000,' + cityLat + ',' + cityLon + ');' +
-        ');out body center;';
-
-        function renderResults(elements) {
-          const bounds = [];
-
-          elements.forEach((el) => {
-            const lat = el.lat || el.center?.lat;
-            const lon = el.lon || el.center?.lon;
-            if (!lat || !lon) return;
-
-            bounds.push([lat, lon]);
-
-            const name = el.tags?.name || '${supermarketName}';
-            const addr = [
-              el.tags?.['addr:street'],
-              el.tags?.['addr:housenumber'],
-            ].filter(Boolean).join(' ') || 'Tap for directions';
-
-            L.marker([lat, lon], { icon: violetIcon })
-              .addTo(map)
-              .bindPopup(
-                '<div class="store-name">' + name + '</div>' +
-                '<div class="store-addr">' + addr + '</div>'
-              );
-          });
-
-          if (bounds.length > 0) {
-            if (bounds.length === 1) {
-              map.setView(bounds[0], 15);
-            } else {
-              map.fitBounds(bounds, { padding: [40, 40] });
-            }
-          }
-        }
-
-        function showNoResults() {
-          L.marker([cityLat, cityLon], { icon: violetIcon })
-            .addTo(map)
-            .bindPopup(
-              '<div class="store-name">${supermarketName}</div>' +
-              '<div class="store-addr">No ${supermarketName} locations found in OpenStreetMap for this area yet.</div>'
-            )
-            .openPopup();
-        }
-
-        runOverpass(nameQuery)
-          .then(data => {
-            const elements = data.elements || [];
-            if (elements.length > 0) {
-              renderResults(elements);
-              return;
-            }
-            // Fallback: broader search using the brand tag.
-            return runOverpass(brandQuery).then(brandData => {
-              const brandElements = brandData.elements || [];
-              if (brandElements.length > 0) {
-                renderResults(brandElements);
-              } else {
-                showNoResults();
-              }
-            });
-          })
-          .catch(() => {
-            map.setView([cityLat, cityLon], 14);
-          });
-      })
-      .catch(() => {
-        map.setView([38.9637, 22.3261], 7);
-      });
-  </script>
+if (locations.length === 0) {
+  map.setView([40.6401, 22.9444], 12);
+} else {
+  var bounds = [];
+  for (var i = 0; i < locations.length; i++) {
+    var loc = locations[i];
+    bounds.push([loc.lat, loc.lon]);
+    L.marker([loc.lat, loc.lon], { icon: violetIcon })
+      .addTo(map)
+      .bindPopup(
+        '<div class="popup-name">' + loc.name + '</div>' +
+        '<div class="popup-addr">' + loc.address + '</div>' +
+        '<div class="popup-area">' + loc.area + '</div>'
+      );
+  }
+  if (bounds.length === 1) {
+    map.setView(bounds[0], 14);
+  } else {
+    map.fitBounds(bounds, { padding: [60, 60] });
+  }
+}
+</script>
 </body>
 </html>
-  `;
+    `;
+  }, [locations]);
+
+  const isThessaloniki = city.toLowerCase().includes('thessalonik') ||
+    city.toLowerCase().includes('θεσσαλον');
 
   return (
-    <Modal
-      transparent
-      visible={visible}
-      onRequestClose={onClose}
-      statusBarTranslucent
-      animationType="none"
-    >
+    <Modal transparent visible={visible} onRequestClose={onClose}
+      statusBarTranslucent animationType="none">
       <Pressable style={styles.backdrop} onPress={onClose} />
+      <Animated.View style={[styles.sheet,
+        { transform: [{ translateY: slideAnim }] }]}>
 
-      <Animated.View
-        style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}
-      >
         <View style={styles.header}>
           <View style={styles.handle} />
           <View style={styles.headerRow}>
             <View>
               <Text style={styles.headerTitle}>{supermarketName}</Text>
               <Text style={styles.headerSub}>
-                Nearby locations in {city}
+                {locations.length === 0 ? (
+                  city.toLowerCase().includes('thessalonik') ||
+                  city.toLowerCase().includes('θεσσαλον')
+                    ? 'No locations found nearby'
+                    : 'Map data is currently limited to Thessaloniki'
+                ) : (
+                  locations.length + ' location' + (locations.length !== 1 ? 's' : '') + ' in ' + city
+                )}
               </Text>
             </View>
             <Pressable style={styles.closeBtn} onPress={onClose}>
@@ -245,24 +155,28 @@ export default function SupermarketMapModal({
         </View>
 
         <View style={styles.mapContainer}>
-          {loading && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#8b5cf6" />
-              <Text style={styles.loadingText}>
-                Finding {supermarketName} locations...
+          {!isThessaloniki && locations.length === 0 ? (
+            <View style={styles.unsupportedCityOverlay}>
+              <Text style={styles.unsupportedCityEmoji}>🗺️</Text>
+              <Text style={styles.unsupportedCityTitle}>
+                Map coverage is expanding
+              </Text>
+              <Text style={styles.unsupportedCityText}>
+                We currently have verified store locations for Thessaloniki.
+                Support for {city} and other cities is on the roadmap —
+                this will use a live location API once the app goes live.
               </Text>
             </View>
+          ) : (
+            <WebView
+              source={{ html: mapHtml }}
+              style={styles.webview}
+              javaScriptEnabled
+              domStorageEnabled
+              originWhitelist={['*']}
+              mixedContentMode="always"
+            />
           )}
-          <WebView
-            source={{ html: mapHtml }}
-            style={styles.webview}
-            onLoadEnd={() => setLoading(false)}
-            javaScriptEnabled
-            domStorageEnabled
-            originWhitelist={['*']}
-            mixedContentMode="always"
-            onError={() => setLoading(false)}
-          />
         </View>
 
         <View style={styles.footer}>
@@ -276,94 +190,57 @@ export default function SupermarketMapModal({
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    position: 'absolute', bottom: 0, left: 0, right: 0,
     height: '82%',
     backgroundColor: '#09090f',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(139,92,246,0.2)',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    borderWidth: 1, borderColor: 'rgba(139,92,246,0.2)',
     overflow: 'hidden',
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(139,92,246,0.1)',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.1)',
   },
   handle: {
-    width: 36,
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 14,
+    width: 36, height: 4, backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 2, alignSelf: 'center', marginBottom: 14,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-    letterSpacing: -0.3,
-  },
-  headerSub: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 12,
-    marginTop: 2,
-  },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { color: '#ffffff', fontSize: 18, fontWeight: '600', letterSpacing: -0.3 },
+  headerSub: { color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 },
   closeBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 30, height: 30, borderRadius: 15,
     backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  closeBtnText: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
+  mapContainer: { flex: 1, position: 'relative' },
+  unsupportedCityOverlay: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 12,
   },
-  closeBtnText: {
+  unsupportedCityEmoji: {
+    fontSize: 40,
+    marginBottom: 4,
+  },
+  unsupportedCityTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  unsupportedCityText: {
     color: 'rgba(255,255,255,0.4)',
     fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 19,
   },
-  mapContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  webview: {
-    flex: 1,
-    backgroundColor: '#09090f',
-  },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#09090f',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-    gap: 16,
-  },
-  loadingText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 14,
-  },
-  footer: {
-    padding: 12,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(139,92,246,0.08)',
-  },
-  footerText: {
-    color: 'rgba(255,255,255,0.3)',
-    fontSize: 12,
-  },
+  webview: { flex: 1, backgroundColor: '#09090f' },
+  footer: { padding: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: 'rgba(139,92,246,0.08)' },
+  footerText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
 });

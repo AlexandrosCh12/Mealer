@@ -22,6 +22,10 @@ export async function upsertProfile(
   userId: string,
   onboarding: OnboardingData
 ): Promise<{ error: string | null }> {
+  if (!onboarding.display_name?.trim()) {
+    return { error: 'Incomplete onboarding data' };
+  }
+
   if (
     !onboarding.goal ||
     !onboarding.gender ||
@@ -44,6 +48,7 @@ export async function upsertProfile(
 
   const { error } = await supabase.from('profiles').upsert({
     id: userId,
+    display_name: onboarding.display_name.trim(),
     goal: onboarding.goal,
     gender: onboarding.gender,
     age: onboarding.age,

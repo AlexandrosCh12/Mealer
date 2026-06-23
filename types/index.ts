@@ -62,6 +62,7 @@ export interface RankedSupermarket extends Supermarket {
 }
 
 export interface OnboardingData {
+  display_name: string;
   goal: Goal | null;
   gender: string | null;
   age: number | null;

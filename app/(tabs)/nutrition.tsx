@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
@@ -16,10 +17,10 @@ import MealDetailModal from '@/components/MealDetailModal';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/constants/colors';
 import { calculateDailyCalorieTarget } from '@/lib/calories';
-import { generateMealPlan } from '@/lib/mealGenerator';
 import { getTodayPlan, type WeeklyPlan } from '@/lib/weeklyMealPlan';
 import type { Meal } from '@/types';
 
+const EATEN_IDS_KEY = 'eaten_ids_';
 const WEEKLY_PLAN_KEY = 'current_weekly_plan';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -116,6 +117,9 @@ export default function NutritionScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
   const [todayMeals, setTodayMeals] = useState<Meal[]>([]);
+  const [eatenIds, setEatenIds] = useState<string[]>([]);
+  const [planLoaded, setPlanLoaded] = useState(false);
+  const [planMissing, setPlanMissing] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -134,40 +138,49 @@ export default function NutritionScreen() {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  useEffect(() => {
-    if (!profile) return;
-    const currentProfile = profile;
+  const loadData = useCallback(async () => {
+    const today = new Date().toISOString().split('T')[0];
 
-    async function loadTodayMeals() {
-      const stored = await AsyncStorage.getItem(WEEKLY_PLAN_KEY);
-      if (stored) {
-        try {
-          const weeklyPlan = JSON.parse(stored) as WeeklyPlan;
-          const todayPlan = getTodayPlan(weeklyPlan);
-          if (todayPlan && todayPlan.meals.length > 0) {
-            setTodayMeals(todayPlan.meals);
-            return;
-          }
-        } catch {
-          // fall through to generated fallback
+    const eatenStored = await AsyncStorage.getItem(EATEN_IDS_KEY + today);
+    const eatenList: string[] = eatenStored ? JSON.parse(eatenStored) : [];
+    setEatenIds(eatenList);
+
+    const planStored = await AsyncStorage.getItem(WEEKLY_PLAN_KEY);
+    if (planStored) {
+      try {
+        const weeklyPlan = JSON.parse(planStored) as WeeklyPlan;
+        const todayPlan = getTodayPlan(weeklyPlan);
+        if (todayPlan && todayPlan.meals.length > 0) {
+          setTodayMeals(todayPlan.meals);
+          setPlanMissing(false);
+          setPlanLoaded(true);
+          return;
         }
+      } catch {
+        // ignore
       }
-      // Fallback: generate a plan if nothing is stored yet
-      setTodayMeals(generateMealPlan(currentProfile).meals);
     }
+    setTodayMeals([]);
+    setPlanMissing(true);
+    setPlanLoaded(true);
+  }, []);
 
-    void loadTodayMeals();
-  }, [profile]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadData();
+    }, [loadData])
+  );
 
-  const { totals, targets, meals } = useMemo(() => {
+  const { totals, targets, eatenMeals } = useMemo(() => {
     if (!profile) {
       return {
         totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
         targets: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-        meals: [] as Meal[],
+        eatenMeals: [] as Meal[],
       };
     }
-    const totals = todayMeals.reduce(
+    const eatenMeals = todayMeals.filter((m) => eatenIds.includes(m.id));
+    const totals = eatenMeals.reduce(
       (acc, m) => ({
         calories: acc.calories + m.macros.calories,
         protein: acc.protein + m.macros.protein,
@@ -188,9 +201,9 @@ export default function NutritionScreen() {
         carbs: carbsTarget,
         fat: fatTarget,
       },
-      meals: todayMeals,
+      eatenMeals,
     };
-  }, [profile, todayMeals]);
+  }, [profile, todayMeals, eatenIds]);
 
   const calorieProgress =
     targets.calories > 0
@@ -213,6 +226,34 @@ export default function NutritionScreen() {
           style={StyleSheet.absoluteFill}
         />
         <Text style={styles.muted}>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!planLoaded) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={[...colors.backgroundGradient]}
+          locations={[...colors.gradientLocations]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={styles.muted}>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (planMissing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={[...colors.backgroundGradient]}
+          locations={[...colors.gradientLocations]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={styles.muted}>
+          Open the Home tab first to generate your plan.
+        </Text>
       </SafeAreaView>
     );
   }
@@ -285,35 +326,42 @@ export default function NutritionScreen() {
           </View>
         </View>
 
-        <Text style={styles.mealsLoggedLabel}>MEALS LOGGED</Text>
-        {meals.map((meal) => (
-          <Pressable
-            key={meal.id}
-            onPress={() => {
-              setSelectedMeal(meal);
-              setModalVisible(true);
-            }}
-            style={({ pressed }) => [
-              styles.mealLogCard,
-              pressed && { opacity: 0.8, transform: [{ scale: 0.99 }] },
-            ]}
-          >
-            <View style={styles.mealRowLeft}>
-              <Text style={styles.mealRowName}>{meal.name}</Text>
-              <Text style={styles.mealRowSlot}>{formatSlot(meal.slot)}</Text>
-            </View>
-            <View style={styles.mealRowRight}>
-              <Text style={styles.mealRowKcal}>
-                {meal.macros.calories} kcal
-              </Text>
-              <Text style={styles.mealRowMacros}>
-                P{meal.macros.protein} · C{meal.macros.carbs} · F
-                {meal.macros.fat}
-              </Text>
-            </View>
-            <Text style={styles.mealLogChevron}>›</Text>
-          </Pressable>
-        ))}
+        <Text style={styles.mealsLoggedLabel}>EATEN TODAY</Text>
+        {eatenMeals.length === 0 ? (
+          <Text style={styles.emptyState}>
+            Nothing logged yet. Mark meals as eaten on Home to see your nutrition
+            progress.
+          </Text>
+        ) : (
+          eatenMeals.map((meal) => (
+            <Pressable
+              key={meal.id}
+              onPress={() => {
+                setSelectedMeal(meal);
+                setModalVisible(true);
+              }}
+              style={({ pressed }) => [
+                styles.mealLogCard,
+                pressed && { opacity: 0.8, transform: [{ scale: 0.99 }] },
+              ]}
+            >
+              <View style={styles.mealRowLeft}>
+                <Text style={styles.mealRowName}>{meal.name}</Text>
+                <Text style={styles.mealRowSlot}>{formatSlot(meal.slot)}</Text>
+              </View>
+              <View style={styles.mealRowRight}>
+                <Text style={styles.mealRowKcal}>
+                  {meal.macros.calories} kcal
+                </Text>
+                <Text style={styles.mealRowMacros}>
+                  P{meal.macros.protein} · C{meal.macros.carbs} · F
+                  {meal.macros.fat}
+                </Text>
+              </View>
+              <Text style={styles.mealLogChevron}>›</Text>
+            </Pressable>
+          ))
+        )}
       </ScrollView>
       </Animated.View>
 
@@ -495,6 +543,12 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: colors.textMuted,
+    padding: 24,
+  },
+  emptyState: {
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
     padding: 24,
   },
 });

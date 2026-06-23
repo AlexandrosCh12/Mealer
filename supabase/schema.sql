@@ -4,6 +4,7 @@
 -- Profiles table
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
+  display_name text,
   age int not null,
   weight_kg float not null,
   height_cm float not null,

@@ -198,6 +198,7 @@ export default function ShoppingScreen() {
   const [selectedStore, setSelectedStore] = useState('');
   const [selectedStoreName, setSelectedStoreName] = useState<string>('');
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
   const checkedMapRef = useRef<Record<string, boolean>>({});
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
@@ -295,6 +296,7 @@ export default function ShoppingScreen() {
       const stored = await AsyncStorage.getItem(WEEKLY_PLAN_KEY);
       if (!stored) {
         setWeeklyPlan(null);
+        setPlanLoaded(true);
         return;
       }
       try {
@@ -302,6 +304,7 @@ export default function ShoppingScreen() {
       } catch {
         setWeeklyPlan(null);
       }
+      setPlanLoaded(true);
     }
 
     void loadStoredPlan();
@@ -342,6 +345,34 @@ export default function ShoppingScreen() {
           style={StyleSheet.absoluteFill}
         />
         <Text style={styles.muted}>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!planLoaded) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={[...colors.backgroundGradient]}
+          locations={[...colors.gradientLocations]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={styles.muted}>Loading…</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (!weeklyPlan) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={[...colors.backgroundGradient]}
+          locations={[...colors.gradientLocations]}
+          style={StyleSheet.absoluteFill}
+        />
+        <Text style={styles.muted}>
+          Open the Home tab first to load your weekly shopping list.
+        </Text>
       </SafeAreaView>
     );
   }

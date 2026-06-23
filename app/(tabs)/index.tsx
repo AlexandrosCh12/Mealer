@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DayPlanModal from '@/components/DayPlanModal';
 import MealDetailModal from '@/components/MealDetailModal';
 import NotificationsPanel, {
   MOCK_NOTIFICATIONS,
@@ -22,13 +23,15 @@ import NotificationsPanel, {
 import AnimatedButton from '@/components/ui/AnimatedButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { colors } from '@/constants/colors';
+import { getTimeBasedGreeting } from '@/constants/greetings';
 import { getDailyQuote } from '@/constants/motivationQuotes';
 import { swapMeal } from '@/lib/mealGenerator';
-import { loadOrGenerateWeeklyPlan } from '@/lib/mealPlanStorage';
+import { loadOrGenerateWeeklyPlan, saveWeeklyPlan } from '@/lib/mealPlanStorage';
 import { getTodayPlan, type DayPlan, type WeeklyPlan } from '@/lib/weeklyMealPlan';
 import type { Meal, MealSlot } from '@/types';
 
 const WEEKLY_PLAN_KEY = 'current_weekly_plan';
+const EATEN_IDS_KEY = 'eaten_ids_';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -44,29 +47,12 @@ function sortMealsBySlot(meals: Meal[]): Meal[] {
   );
 }
 
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function getDisplayName(profile: { display_name?: string | null; email?: string | null } | null): string {
-  let name = 'there';
-  if (profile?.display_name?.trim()) {
-    name = profile.display_name.trim();
-  } else if (profile?.email) {
-    name = profile.email.split('@')[0];
-  }
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
-
 function formatSlot(slot: MealSlot): string {
   return slot.charAt(0).toUpperCase() + slot.slice(1);
 }
 
 export default function HomeScreen() {
-  const { profile } = useAuth();
+  const { profile, session } = useAuth();
   const router = useRouter();
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
   const [todayPlan, setTodayPlan] = useState<DayPlan | null>(null);
@@ -74,6 +60,7 @@ export default function HomeScreen() {
   const [eatenIds, setEatenIds] = useState<string[]>([]);
   const [selectedMeal, setSelectedMeal] = useState<Meal | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [dayPlanVisible, setDayPlanVisible] = useState(false);
   const [notificationsVisible, setNotificationsVisible] = useState(false);
   const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
   const ringAnim = useRef(new Animated.Value(0)).current;
@@ -127,8 +114,11 @@ export default function HomeScreen() {
       setWeeklyPlan(updatedPlan);
       setTodayPlan(updatedDay);
       void persistWeeklyPlan(updatedPlan);
+      if (session?.user.id) {
+        void saveWeeklyPlan(session.user.id, updatedPlan);
+      }
     },
-    [weeklyPlan, todayPlan, persistWeeklyPlan]
+    [weeklyPlan, todayPlan, persistWeeklyPlan, session?.user.id]
   );
 
   const loadPlan = useCallback(async () => {
@@ -143,6 +133,47 @@ export default function HomeScreen() {
   useEffect(() => {
     void loadPlan();
   }, [loadPlan]);
+
+  useEffect(() => {
+    async function loadEatenIds() {
+      const allKeys = await AsyncStorage.getAllKeys();
+      const eatenKeys = allKeys.filter((k) => k.startsWith(EATEN_IDS_KEY));
+      const today = new Date();
+      for (const key of eatenKeys) {
+        const dateStr = key.replace(EATEN_IDS_KEY, '');
+        const keyDate = new Date(dateStr);
+        const diffDays = (today.getTime() - keyDate.getTime()) / 86400000;
+        if (diffDays > 7) {
+          await AsyncStorage.removeItem(key);
+        }
+      }
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const stored = await AsyncStorage.getItem(EATEN_IDS_KEY + todayStr);
+      if (stored) {
+        try {
+          const ids = JSON.parse(stored) as string[];
+          setEatenIds(ids);
+        } catch {
+          // ignore
+        }
+      }
+    }
+    void loadEatenIds();
+  }, []);
+
+  useEffect(() => {
+    async function saveEatenIds() {
+      const today = new Date().toISOString().split('T')[0];
+      await AsyncStorage.setItem(
+        EATEN_IDS_KEY + today,
+        JSON.stringify(eatenIds)
+      );
+    }
+    if (eatenIds.length > 0) {
+      void saveEatenIds();
+    }
+  }, [eatenIds]);
 
   useEffect(() => {
     Animated.parallel([
@@ -234,7 +265,12 @@ export default function HomeScreen() {
     );
   }
 
-  const displayName = getDisplayName(profile);
+  const displayName =
+    profile.display_name?.trim() ||
+    session?.user.email?.split('@')[0] ||
+    'there';
+  const capitalizedName =
+    displayName.charAt(0).toUpperCase() + displayName.slice(1);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -253,8 +289,8 @@ export default function HomeScreen() {
         <ScrollView contentContainerStyle={styles.scroll}>
           <View style={styles.headerRow}>
             <View>
-              <Text style={styles.greetingLabel}>{getGreeting()}</Text>
-              <Text style={styles.displayName}>{displayName}</Text>
+              <Text style={styles.greetingLabel}>{getTimeBasedGreeting()},</Text>
+              <Text style={styles.displayName}>{capitalizedName}</Text>
             </View>
             <Pressable
               style={styles.bellContainer}
@@ -411,7 +447,7 @@ export default function HomeScreen() {
           {!allEaten && stillToGoMeals.length > 0 ? (
             <View style={styles.stillToGoSection}>
               <Text style={styles.stillToGoLabel}>STILL TO GO</Text>
-              {stillToGoMeals.map((meal) => {
+              {stillToGoMeals.slice(0, 3).map((meal) => {
                 const slotColors = colors.slots[meal.slot];
                 return (
                   <Pressable
@@ -449,6 +485,12 @@ export default function HomeScreen() {
                   </Pressable>
                 );
               })}
+              <Pressable
+                style={styles.viewAllBtn}
+                onPress={() => setDayPlanVisible(true)}
+              >
+                <Text style={styles.viewAllBtnText}>View full day&apos;s plan</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -477,6 +519,20 @@ export default function HomeScreen() {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
       />
+
+      <DayPlanModal
+        visible={dayPlanVisible}
+        onClose={() => setDayPlanVisible(false)}
+        meals={todayPlan?.meals ?? []}
+        eatenIds={eatenIds}
+        onMealPress={(meal) => {
+          setDayPlanVisible(false);
+          setTimeout(() => {
+            setSelectedMeal(meal);
+            setModalVisible(true);
+          }, 300);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -493,22 +549,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16,
     paddingHorizontal: 16,
-    paddingBottom: 0,
+    paddingBottom: 8,
   },
   greetingLabel: {
     fontFamily: 'DMSans_400Regular',
-    fontSize: 10,
+    fontSize: 13,
+    fontWeight: '500',
     color: colors.textSecondary,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   displayName: {
     fontFamily: 'DMSans_700Bold',
-    fontSize: 20,
-    fontWeight: '600',
-    letterSpacing: -0.4,
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
     color: colors.text,
+    marginBottom: 4,
   },
   bellContainer: {
     width: 32,
@@ -784,6 +842,21 @@ const styles = StyleSheet.create({
     fontFamily: 'DMSans_400Regular',
     fontSize: 10,
     color: colors.textMuted,
+  },
+  viewAllBtn: {
+    backgroundColor: 'rgba(96,165,250,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(96,165,250,0.2)',
+    borderRadius: 14,
+    padding: 12,
+    marginTop: 8,
+    marginHorizontal: 14,
+  },
+  viewAllBtnText: {
+    color: '#60a5fa',
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   quoteCard: {
     marginHorizontal: 14,

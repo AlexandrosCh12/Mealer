@@ -71,26 +71,28 @@ export default function OnboardingScreen() {
   function canContinue(): boolean {
     switch (step) {
       case 1:
-        return data.goal !== null;
+        return data.display_name.trim().length > 0;
       case 2:
-        return data.gender !== null && data.gender.length > 0;
+        return data.goal !== null;
       case 3:
-        return data.age !== null && data.age > 0;
+        return data.gender !== null && data.gender.length > 0;
       case 4:
-        return data.weight_kg !== null && data.weight_kg > 0;
+        return data.age !== null && data.age > 0;
       case 5:
-        return data.height_cm !== null && data.height_cm > 0;
+        return data.weight_kg !== null && data.weight_kg > 0;
       case 6:
-        return data.activity_level !== null;
+        return data.height_cm !== null && data.height_cm > 0;
       case 7:
-        return data.diet_type !== null;
+        return data.activity_level !== null;
       case 8:
-        return data.allergies.length > 0;
+        return data.diet_type !== null;
       case 9:
-        return data.budget_weekly_eur !== null && data.budget_weekly_eur > 0;
+        return data.allergies.length > 0;
       case 10:
-        return data.country !== null && data.country.length > 0;
+        return data.budget_weekly_eur !== null && data.budget_weekly_eur > 0;
       case 11:
+        return data.country !== null && data.country.length > 0;
+      case 12:
         return data.city !== null && data.city.trim().length > 0;
       default:
         return false;
@@ -193,6 +195,18 @@ export default function OnboardingScreen() {
           }}
         >
           {step === 1 && (
+            <StepShell title="What's your name?" subtitle="We'll use it to greet you">
+              <TextInput
+                style={styles.textInput}
+                placeholder="Your first name"
+                placeholderTextColor={colors.textMuted}
+                value={data.display_name}
+                onChangeText={(t) => update({ display_name: t })}
+              />
+            </StepShell>
+          )}
+
+          {step === 2 && (
             <StepShell title="What is your goal?" subtitle="We'll tailor your meal plan">
               {GOAL_OPTIONS.map((opt) => (
                 <OptionButton
@@ -205,7 +219,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <StepShell title="Gender" subtitle="Used for calorie calculations">
               {GENDER_OPTIONS.map((g) => (
                 <OptionButton
@@ -218,7 +232,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <StepShell title="Age" subtitle="How old are you?">
               <NumericInput
                 value={data.age}
@@ -228,7 +242,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <StepShell title="Weight" subtitle="In kilograms">
               <NumericInput
                 value={data.weight_kg}
@@ -239,7 +253,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <StepShell title="Height" subtitle="In centimeters">
               <NumericInput
                 value={data.height_cm}
@@ -249,7 +263,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <StepShell title="Activity level" subtitle="How active is your lifestyle?">
               {ACTIVITY_OPTIONS.map((opt) => (
                 <OptionButton
@@ -262,7 +276,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 7 && (
+          {step === 8 && (
             <StepShell title="Diet type" subtitle="Choose your eating style">
               {DIET_OPTIONS.map((opt) => (
                 <OptionButton
@@ -275,7 +289,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 8 && (
+          {step === 9 && (
             <StepShell title="Any allergies?" subtitle="Select all that apply">
               {ALLERGY_OPTIONS.map((opt) => (
                 <OptionButton
@@ -288,7 +302,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 9 && (
+          {step === 10 && (
             <StepShell title="Weekly grocery budget" subtitle="In euros (€)">
               <NumericInput
                 value={data.budget_weekly_eur}
@@ -299,7 +313,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 10 && (
+          {step === 11 && (
             <StepShell title="Country" subtitle="For supermarket recommendations">
               {COUNTRY_OPTIONS.map((c) => (
                 <OptionButton
@@ -312,7 +326,7 @@ export default function OnboardingScreen() {
             </StepShell>
           )}
 
-          {step === 11 && (
+          {step === 12 && (
             <StepShell title="City" subtitle="Where do you shop?">
               <TextInput
                 style={styles.textInput}
