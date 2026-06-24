@@ -13,6 +13,17 @@ import {
 import { WebView } from 'react-native-webview';
 import { getStoreLocations } from '@/constants/supermarketLocations';
 
+function escapeForHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;')
+    .replace(/\$/g, '&#36;');
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -46,9 +57,13 @@ export default function SupermarketMapModal({
     }
   }, [visible]);
 
+  const safeSupermarketName = escapeForHtml(supermarketName);
+  const safeCity = escapeForHtml(city);
+  const safeCountry = escapeForHtml(country);
+
   const locations = React.useMemo(
-    () => getStoreLocations(supermarketName, city),
-    [supermarketName, city]
+    () => getStoreLocations(safeSupermarketName, safeCity),
+    [safeSupermarketName, safeCity]
   );
 
   const mapHtml = React.useMemo(() => {
@@ -57,6 +72,7 @@ export default function SupermarketMapModal({
 <html>
 <head>
 <meta charset="utf-8" />
+<!-- ${safeCountry} -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -128,7 +144,7 @@ if (locations.length === 0) {
 </body>
 </html>
     `;
-  }, [locations]);
+  }, [locations, safeCountry]);
 
   const isThessaloniki = city.toLowerCase().includes('thessalonik') ||
     city.toLowerCase().includes('θεσσαλον');
@@ -183,6 +199,9 @@ if (locations.length === 0) {
               domStorageEnabled
               originWhitelist={['about:blank', 'https://*']}
               mixedContentMode="never"
+              allowFileAccess={false}
+              allowUniversalAccessFromFileURLs={false}
+              javaScriptCanOpenWindowsAutomatically={false}
             />
           )}
         </View>

@@ -58,6 +58,10 @@ function formatSlot(slot: MealSlot): string {
   return slot.charAt(0).toUpperCase() + slot.slice(1);
 }
 
+function isValidEatenIds(obj: unknown): obj is string[] {
+  return Array.isArray(obj) && obj.every((id) => typeof id === 'string');
+}
+
 /** Home dashboard — greeting, intake ring, next meal, still-to-go list, daily quote. */
 export default function HomeScreen() {
   const { profile, session } = useAuth();
@@ -158,13 +162,18 @@ export default function HomeScreen() {
       }
 
       const todayStr = new Date().toISOString().split('T')[0];
-      const stored = await AsyncStorage.getItem(EATEN_IDS_KEY + todayStr);
+      const eatenKey = EATEN_IDS_KEY + todayStr;
+      const stored = await AsyncStorage.getItem(eatenKey);
       if (stored) {
         try {
-          const ids = JSON.parse(stored) as string[];
-          setEatenIds(ids);
+          const ids = JSON.parse(stored);
+          if (isValidEatenIds(ids)) {
+            setEatenIds(ids);
+          } else {
+            await AsyncStorage.removeItem(eatenKey);
+          }
         } catch {
-          // ignore
+          await AsyncStorage.removeItem(eatenKey);
         }
       }
     }

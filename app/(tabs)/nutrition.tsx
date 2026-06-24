@@ -120,6 +120,22 @@ function formatTodayDate(): string {
   });
 }
 
+function isValidWeeklyPlan(obj: unknown): obj is WeeklyPlan {
+  return (
+    !!obj &&
+    typeof obj === 'object' &&
+    typeof (obj as WeeklyPlan).weekStart === 'string' &&
+    Array.isArray((obj as WeeklyPlan).days) &&
+    (obj as WeeklyPlan).days.every(
+      (d) => typeof d.date === 'string' && Array.isArray(d.meals)
+    )
+  );
+}
+
+function isValidEatenIds(obj: unknown): obj is string[] {
+  return Array.isArray(obj) && obj.every((id) => typeof id === 'string');
+}
+
 /** Nutrition summary screen with macro rings and eaten-meal log. */
 export default function NutritionScreen() {
   const { profile } = useAuth();
@@ -150,14 +166,36 @@ export default function NutritionScreen() {
   const loadData = useCallback(async () => {
     const today = new Date().toISOString().split('T')[0];
 
-    const eatenStored = await AsyncStorage.getItem(EATEN_IDS_KEY + today);
-    const eatenList: string[] = eatenStored ? JSON.parse(eatenStored) : [];
-    setEatenIds(eatenList);
+    const eatenKey = EATEN_IDS_KEY + today;
+    const eatenStored = await AsyncStorage.getItem(eatenKey);
+    if (eatenStored) {
+      try {
+        const parsed = JSON.parse(eatenStored);
+        if (isValidEatenIds(parsed)) {
+          setEatenIds(parsed);
+        } else {
+          await AsyncStorage.removeItem(eatenKey);
+          setEatenIds([]);
+        }
+      } catch {
+        await AsyncStorage.removeItem(eatenKey);
+        setEatenIds([]);
+      }
+    } else {
+      setEatenIds([]);
+    }
 
     const planStored = await AsyncStorage.getItem(WEEKLY_PLAN_KEY);
     if (planStored) {
       try {
-        const weeklyPlan = JSON.parse(planStored) as WeeklyPlan;
+        const weeklyPlan = JSON.parse(planStored);
+        if (!isValidWeeklyPlan(weeklyPlan)) {
+          await AsyncStorage.removeItem(WEEKLY_PLAN_KEY);
+          setTodayMeals([]);
+          setPlanMissing(true);
+          setPlanLoaded(true);
+          return;
+        }
         const todayPlan = getTodayPlan(weeklyPlan);
         if (todayPlan && todayPlan.meals.length > 0) {
           setTodayMeals(todayPlan.meals);
@@ -166,7 +204,7 @@ export default function NutritionScreen() {
           return;
         }
       } catch {
-        // ignore
+        await AsyncStorage.removeItem(WEEKLY_PLAN_KEY);
       }
     }
     setTodayMeals([]);

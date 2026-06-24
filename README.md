@@ -65,15 +65,30 @@ Mealer is a React Native mobile app that builds personalized weekly meal plans f
 
 ## 📸 Screenshots
 
-<!-- Add screenshots here: home screen, nutrition, shopping, profile, onboarding -->
-
-| Home | Nutrition | Shopping |
-|:---:|:---:|:---:|
-| ![Home screen — today's meal plan and calorie ring](docs/screenshots/home.png) | ![Nutrition tab — macro rings and logged meals](docs/screenshots/nutrition.png) | ![Shopping tab — store rankings and ingredient checklist](docs/screenshots/shopping.png) |
-
-| Profile | Onboarding |
-|:---:|:---:|
-| ![Profile tab — user stats and account actions](docs/screenshots/profile.png) | ![Onboarding wizard — step-by-step setup flow](docs/screenshots/onboarding.png) |
+<table>
+  <tr>
+    <td align="center"><b>Home</b></td>
+    <td align="center"><b>Meal Detail</b></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/home-screen.jpg" width="280"/></td>
+    <td><img src="assets/screenshots/meal-detail.jpg" width="280"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Nutrition</b></td>
+    <td align="center"><b>Shopping</b></td>
+  </tr>
+  <tr>
+    <td><img src="assets/screenshots/nutrition-screen.jpg" width="280"/></td>
+    <td><img src="assets/screenshots/shopping-screen.jpg" width="280"/></td>
+  </tr>
+  <tr>
+    <td align="center" colspan="2"><b>Profile</b></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="assets/screenshots/profile-screen.jpg" width="280"/></td>
+  </tr>
+</table>
 
 ## 🏗️ Architecture
 

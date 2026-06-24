@@ -6,7 +6,7 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -25,9 +25,25 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const COMMON_PASSWORDS = [
+  'password',
+  'password1',
+  '12345678',
+  'qwerty123',
+  '11111111',
+  'letmein1',
+  'admin123',
+  'iloveyou',
+];
+
+function isCommonPassword(pw: string): boolean {
+  return COMMON_PASSWORDS.includes(pw.toLowerCase());
+}
+
 /** Signup form screen. */
 export default function SignupScreen() {
   const router = useRouter();
+  const isProcessingRef = useRef(false);
   const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +51,7 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
 
   async function handleSignup() {
+    if (isProcessingRef.current) return;
     setError(null);
     if (!isValidEmail(email.trim())) {
       setError('Please enter a valid email address');
@@ -44,30 +61,37 @@ export default function SignupScreen() {
       setError('Password must be at least 8 characters');
       return;
     }
-    setLoading(true);
-    const { data, error: authError } = await supabase.auth.signUp({
-      email: email.trim(),
-      password,
-    });
-    if (authError) {
-      setLoading(false);
-      setError(authError.message);
+    if (isCommonPassword(password)) {
+      setError('This password is too common. Please choose a stronger one.');
       return;
     }
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id: data.user.id,
-        display_name: firstName.trim(),
+    isProcessingRef.current = true;
+    setLoading(true);
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
       });
-      if (profileError) {
-        console.error('Failed to create profile:', profileError.message);
-        setLoading(false);
-        setError('Account created but profile setup failed. Please try logging in.');
+      if (authError) {
+        setError(authError.message);
         return;
       }
+      if (data.user) {
+        const { error: profileError } = await supabase.from('profiles').upsert({
+          id: data.user.id,
+          display_name: firstName.trim(),
+        });
+        if (profileError) {
+          console.error('Failed to create profile:', profileError.message);
+          setError('Account created but profile setup failed. Please try logging in.');
+          return;
+        }
+      }
+      router.replace('/');
+    } finally {
+      isProcessingRef.current = false;
+      setLoading(false);
     }
-    setLoading(false);
-    router.replace('/');
   }
 
   return (

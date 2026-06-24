@@ -68,21 +68,27 @@ export async function upsertProfile(
       ? ['none']
       : onboarding.allergies.filter((a) => a !== 'none');
 
-  const { error } = await supabase.from('profiles').upsert({
-    id: userId,
-    display_name: onboarding.display_name.trim(),
-    goal: onboarding.goal,
-    gender: onboarding.gender,
-    age: onboarding.age,
-    weight_kg: onboarding.weight_kg,
-    height_cm: onboarding.height_cm,
-    activity_level: onboarding.activity_level,
-    diet_type: onboarding.diet_type,
-    allergies,
-    budget_weekly_eur: onboarding.budget_weekly_eur,
-    country: onboarding.country,
-    city: onboarding.city,
-  });
+  const { data: upsertData, error } = await supabase
+    .from('profiles')
+    .upsert(
+      {
+        id: userId,
+        display_name: onboarding.display_name.trim(),
+        goal: onboarding.goal,
+        gender: onboarding.gender,
+        age: onboarding.age,
+        weight_kg: onboarding.weight_kg,
+        height_cm: onboarding.height_cm,
+        activity_level: onboarding.activity_level,
+        diet_type: onboarding.diet_type,
+        allergies,
+        budget_weekly_eur: onboarding.budget_weekly_eur,
+        country: onboarding.country,
+        city: onboarding.city,
+      },
+      { onConflict: 'id' }
+    )
+    .select();
 
   return { error: error?.message ?? null };
 }

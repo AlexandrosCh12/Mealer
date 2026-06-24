@@ -35,6 +35,29 @@ import type { RankedSupermarket, SupermarketSortPreference } from '@/types';
 const WEEKLY_PLAN_KEY = 'current_weekly_plan';
 const CHECKED_STATE_KEY = 'ingredient_checked_state';
 
+function isValidWeeklyPlan(obj: unknown): obj is WeeklyPlan {
+  return (
+    !!obj &&
+    typeof obj === 'object' &&
+    typeof (obj as WeeklyPlan).weekStart === 'string' &&
+    Array.isArray((obj as WeeklyPlan).days) &&
+    (obj as WeeklyPlan).days.every(
+      (d) => typeof d.date === 'string' && Array.isArray(d.meals)
+    )
+  );
+}
+
+function isValidCheckedState(obj: unknown): obj is Record<string, boolean> {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    !Array.isArray(obj) &&
+    Object.entries(obj).every(
+      ([k, v]) => typeof k === 'string' && typeof v === 'boolean'
+    )
+  );
+}
+
 function priceTierSymbol(tier: 1 | 2 | 3): { symbol: string; color: string } {
   switch (tier) {
     case 1:
@@ -295,8 +318,15 @@ export default function ShoppingScreen() {
       const checkedRaw = await AsyncStorage.getItem(CHECKED_STATE_KEY);
       if (checkedRaw) {
         try {
-          checkedMapRef.current = JSON.parse(checkedRaw) as Record<string, boolean>;
+          const parsed = JSON.parse(checkedRaw);
+          if (isValidCheckedState(parsed)) {
+            checkedMapRef.current = parsed;
+          } else {
+            await AsyncStorage.removeItem(CHECKED_STATE_KEY);
+            checkedMapRef.current = {};
+          }
         } catch {
+          await AsyncStorage.removeItem(CHECKED_STATE_KEY);
           checkedMapRef.current = {};
         }
       }
@@ -308,8 +338,15 @@ export default function ShoppingScreen() {
         return;
       }
       try {
-        setWeeklyPlan(JSON.parse(stored) as WeeklyPlan);
+        const parsed = JSON.parse(stored);
+        if (isValidWeeklyPlan(parsed)) {
+          setWeeklyPlan(parsed);
+        } else {
+          await AsyncStorage.removeItem(WEEKLY_PLAN_KEY);
+          setWeeklyPlan(null);
+        }
       } catch {
+        await AsyncStorage.removeItem(WEEKLY_PLAN_KEY);
         setWeeklyPlan(null);
       }
       setPlanLoaded(true);

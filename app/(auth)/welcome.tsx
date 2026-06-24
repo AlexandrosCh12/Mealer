@@ -6,7 +6,7 @@
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '@/constants/colors';
 
@@ -21,7 +21,11 @@ export default function WelcomeScreen() {
       />
       <View style={styles.content}>
         <View style={styles.logoWrap}>
-          <Text style={styles.logo}>Mealer</Text>
+          <Image
+            source={require('../../assets/icon.png')}
+            style={styles.logo}
+            accessibilityLabel="Mealer"
+          />
           <Text style={styles.tagline}>Smart meal plans for your goals</Text>
         </View>
         <View style={styles.actions}>
@@ -58,11 +62,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    fontFamily: 'DMSans_700Bold',
-    fontSize: 48,
-    fontWeight: '600',
-    color: colors.accent,
+    width: 160,
+    height: 160,
     marginBottom: 12,
+    borderRadius: 32,
   },
   tagline: {
     fontFamily: 'DMSans_400Regular',

@@ -42,6 +42,8 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(12)).current;
+  const resetProcessingRef = useRef(false);
+  const deleteProcessingRef = useRef(false);
 
   useEffect(() => {
     setNameValue(profile?.display_name ?? '');
@@ -90,11 +92,19 @@ export default function ProfileScreen() {
   }
 
   async function handleReset() {
+    if (resetProcessingRef.current) return;
+    resetProcessingRef.current = true;
     Alert.alert(
       'Reset Profile',
       'This will clear your meal plan and setup answers. You will be asked to set up again.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            resetProcessingRef.current = false;
+          },
+        },
         {
           text: 'Reset',
           style: 'destructive',
@@ -102,12 +112,20 @@ export default function ProfileScreen() {
             try {
               const userId = session?.user.id;
               if (!userId) return;
+
               await supabase.from('meal_plans').delete().eq('user_id', userId);
+
               await AsyncStorage.removeItem('current_weekly_plan');
               const allKeys = await AsyncStorage.getAllKeys();
-              const eatenKeys = allKeys.filter((k) => k.startsWith('eaten_ids_'));
-              await AsyncStorage.multiRemove(eatenKeys);
-              await supabase.from('profiles').update({
+              const appKeysToRemove = allKeys.filter((k) =>
+                k.startsWith('eaten_ids_') ||
+                k.startsWith('ingredient_checked_state')
+              );
+              if (appKeysToRemove.length > 0) {
+                await AsyncStorage.multiRemove(appKeysToRemove);
+              }
+
+              const { error: resetError } = await supabase.from('profiles').update({
                 goal: null,
                 gender: null,
                 age: null,
@@ -120,11 +138,19 @@ export default function ProfileScreen() {
                 country: null,
                 city: null,
               }).eq('id', userId);
+
+              if (resetError) {
+                Alert.alert('Error', 'Could not reset profile. Try again.');
+                return;
+              }
+
               await refreshProfile();
-              await AsyncStorage.clear();
               router.replace('/(onboarding)');
             } catch (e) {
+              console.error('Reset profile error:', e);
               Alert.alert('Error', 'Something went wrong. Try again.');
+            } finally {
+              resetProcessingRef.current = false;
             }
           },
         },
@@ -133,11 +159,19 @@ export default function ProfileScreen() {
   }
 
   async function handleDeleteAccount() {
+    if (deleteProcessingRef.current) return;
+    deleteProcessingRef.current = true;
     Alert.alert(
       'Delete Account',
       'This will permanently delete your account and all data. This cannot be undone.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => {
+            deleteProcessingRef.current = false;
+          },
+        },
         {
           text: 'Delete',
           style: 'destructive',
@@ -179,6 +213,8 @@ export default function ProfileScreen() {
             } catch (e) {
               console.error('Delete account error:', e);
               Alert.alert('Error', 'Something went wrong. Try again.');
+            } finally {
+              deleteProcessingRef.current = false;
             }
           },
         },

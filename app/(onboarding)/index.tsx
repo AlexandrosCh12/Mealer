@@ -72,6 +72,7 @@ export default function OnboardingScreen() {
   const [error, setError] = useState<string | null>(null);
   const slideAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
+  const isProcessingRef = useRef(false);
 
   const progress = step / totalSteps;
 
@@ -108,17 +109,23 @@ export default function OnboardingScreen() {
   }
 
   async function handleFinish() {
-    if (!session?.user.id) return;
+    if (!session?.user.id || saving) return;
+    if (isProcessingRef.current) return;
+    isProcessingRef.current = true;
     setSaving(true);
     setError(null);
-    const { error: saveError } = await upsertProfile(session.user.id, data);
-    setSaving(false);
-    if (saveError) {
-      setError(saveError);
-      return;
+    try {
+      const { error: saveError } = await upsertProfile(session.user.id, data);
+      if (saveError) {
+        setSaving(false);
+        setError(saveError);
+        return;
+      }
+      await refreshProfile();
+      router.replace('/(tabs)');
+    } finally {
+      isProcessingRef.current = false;
     }
-    await refreshProfile();
-    router.replace('/(tabs)');
   }
 
   /** Fade out, change step, then slide+fade in — gives directional step feel. */
